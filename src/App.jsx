@@ -125,13 +125,23 @@ async function sbSignIn(email, password) {
   }
 }
 async function sbSignInMagicLink(email) {
-  var res = await fetch(_authUrl+"/magiclink", { method:"POST",
-    headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY},
-    body:JSON.stringify({ email }) });
-  return res.ok ? { error:null } : { error:{ message:"Failed to send magic link" } };
+  /* Supabase current endpoint is /otp not /magiclink
+     Must include redirectTo so Supabase knows where to send the user */
+  var redirectTo = window.location.origin;
+  try {
+    var res = await fetch(_authUrl+"/otp", { method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY},
+      body:JSON.stringify({ email: email, create_user: true, redirect_to: redirectTo }) });
+    if(res.ok) return { error:null };
+    var body = await res.json().catch(function(){ return {}; });
+    var msg = body.msg || body.error_description || body.message || body.error || ("HTTP "+res.status);
+    return { error:{ message: msg } };
+  } catch(e) {
+    return { error:{ message: "Network error: " + e.message } };
+  }
 }
 async function sbSignInMicrosoft() {
-  var redirectTo = window.location.origin + window.location.pathname;
+  var redirectTo = window.location.origin;
   window.location.href = _authUrl+"/authorize?provider=azure&redirect_to="+encodeURIComponent(redirectTo)+"&access_type=offline";
 }
 async function sbSignOut() {
