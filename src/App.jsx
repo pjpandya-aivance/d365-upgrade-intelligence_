@@ -3839,17 +3839,22 @@ export default function App(){
     (async function(){
       setAuthLoading(true);
       try {
-        /* Check for OAuth callback token in URL hash */
+        /* Check for OAuth / magic link callback token in URL hash
+           Supabase sends: #access_token=xxx&token_type=bearer&refresh_token=yyy&...
+           Must parse BEFORE checking localStorage so magic link works on first load */
         var hash = window.location.hash;
         if(hash && hash.includes("access_token")) {
-          var params = new URLSearchParams(hash.replace("#","?").replace("?","&").replace("&&","&"));
-          var token = params.get("access_token")||params.get("?access_token");
+          /* Correct parse: strip the leading # then parse as query string */
+          var hashContent = hash.startsWith("#") ? hash.slice(1) : hash;
+          var params = new URLSearchParams(hashContent);
+          var token = params.get("access_token");
           var refresh = params.get("refresh_token");
           if(token) {
-            localStorage.setItem("d365_token",token);
-            if(refresh) localStorage.setItem("d365_refresh",refresh);
+            localStorage.setItem("d365_token", token);
+            if(refresh) localStorage.setItem("d365_refresh", refresh);
             sbSetAuth(token);
-            window.history.replaceState(null,"",window.location.pathname);
+            /* Clean the URL so token isn't visible or re-processed */
+            window.history.replaceState(null, "", window.location.pathname);
           }
         }
         /* Skip auth check entirely if anon key not configured */
@@ -3857,7 +3862,7 @@ export default function App(){
           setAuthLoading(false);
           return;
         }
-        /* Only call sbGetUser if we have a token stored */
+        /* Check for stored token (includes token just set from magic link hash above) */
         var storedToken = localStorage.getItem("d365_token");
         if(!storedToken) { setAuthLoading(false); return; }
         var u = await sbGetUser();
@@ -3999,9 +4004,21 @@ export default function App(){
   }
 
   /* ── AUTH SCREEN ── */
-  if(authLoading && !user) return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a,#1e1b4b,#3730a3)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito',-apple-system,sans-serif"}}>
+  if(authLoading && !user) return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a,#1e1b4b,#3730a3)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito',-apple-system,sans-serif",flexDirection:"column",gap:16}}>
     <style>{"@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap')"}</style>
-    <div style={{color:"rgba(255,255,255,.5)",fontSize:"0.9em"}}>⚡ Loading D365 Upgrade Intelligence…</div>
+    <div style={{width:52,height:52,borderRadius:16,background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.6em"}}>⚡</div>
+    <div style={{textAlign:"center"}}>
+      <div style={{color:"rgba(255,255,255,.85)",fontSize:"1em",fontWeight:700,marginBottom:6}}>
+        {window.location.hash.includes("access_token") ? "Signing you in…" : "D365 Upgrade Intelligence"}
+      </div>
+      <div style={{color:"rgba(255,255,255,.4)",fontSize:"0.78em"}}>
+        {window.location.hash.includes("access_token") ? "Processing your magic link — just a moment" : "Loading your workspace…"}
+      </div>
+    </div>
+    <div style={{display:"flex",gap:6,marginTop:4}}>
+      {[0,1,2].map(function(i){return <div key={i} style={{width:6,height:6,borderRadius:"50%",background:"rgba(255,255,255,.3)",animation:"pulse 1.2s ease-in-out "+i*0.2+"s infinite alternate"}}/>;})}
+    </div>
+    <style>{"@keyframes pulse{from{opacity:.3;transform:scale(.8)}to{opacity:1;transform:scale(1)}}"}</style>
   </div>;
 
   if(!user) return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a,#1e1b4b,#3730a3)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito',-apple-system,sans-serif",padding:"24px"}}>
