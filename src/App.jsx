@@ -3830,7 +3830,9 @@ export default function App(){
     }, 8000);
     return function(){ clearTimeout(t); };
   },[]);
-  var [authErr,setAuthErr] = useState("");
+  var [authErr,setAuthErr] = useState(window._authError||"");
+  /* Clear the global after reading it */
+  if(window._authError) { window._authError = null; }
   var [orgId,  setOrgId]  = useState(null);
   var [userRole,setUserRole] = useState("viewer");
   var [magicSent,setMagicSent] = useState(false);
@@ -3853,18 +3855,31 @@ export default function App(){
            Supabase sends: #access_token=xxx&token_type=bearer&refresh_token=yyy&...
            Must parse BEFORE checking localStorage so magic link works on first load */
         var hash = window.location.hash;
-        if(hash && hash.includes("access_token")) {
-          /* Correct parse: strip the leading # then parse as query string */
+        if(hash && hash.length > 1) {
           var hashContent = hash.startsWith("#") ? hash.slice(1) : hash;
           var params = new URLSearchParams(hashContent);
+          var hashError = params.get("error");
+          var hashErrorDesc = params.get("error_description");
           var token = params.get("access_token");
           var refresh = params.get("refresh_token");
+          /* Always clean the URL first */
+          window.history.replaceState(null, "", window.location.pathname);
+          if(hashError) {
+            /* Supabase returned an error in the hash — show it on login screen */
+            var friendlyMsg = hashError === "access_denied" && hashErrorDesc && hashErrorDesc.includes("expired")
+              ? "Your magic link has expired. Please request a new one — links are valid for 1 hour."
+              : hashError === "access_denied"
+                ? "Sign-in was declined. Please try again."
+                : (hashErrorDesc || hashError).replace(/\+/g," ");
+            /* Store error so auth screen can display it after loading clears */
+            window._authError = friendlyMsg;
+            setAuthLoading(false);
+            return;
+          }
           if(token) {
             localStorage.setItem("d365_token", token);
             if(refresh) localStorage.setItem("d365_refresh", refresh);
             sbSetAuth(token);
-            /* Clean the URL so token isn't visible or re-processed */
-            window.history.replaceState(null, "", window.location.pathname);
           }
         }
         /* Skip auth check entirely if anon key not configured */
@@ -4019,10 +4034,10 @@ export default function App(){
     <div style={{width:52,height:52,borderRadius:16,background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.6em"}}>⚡</div>
     <div style={{textAlign:"center"}}>
       <div style={{color:"rgba(255,255,255,.85)",fontSize:"1em",fontWeight:700,marginBottom:6}}>
-        {window.location.hash.includes("access_token") ? "Signing you in…" : "D365 Upgrade Intelligence"}
+        {window.location.hash.includes("access_token") ? "Signing you in…" : window.location.hash.includes("error") ? "Redirecting…" : "D365 Upgrade Intelligence"}
       </div>
       <div style={{color:"rgba(255,255,255,.4)",fontSize:"0.78em"}}>
-        {window.location.hash.includes("access_token") ? "Processing your magic link — just a moment" : "Loading your workspace…"}
+        {window.location.hash.includes("access_token") ? "Processing your magic link — just a moment" : window.location.hash.includes("error") ? "Something went wrong with the link — returning to sign in" : "Loading your workspace…"}
       </div>
     </div>
     <div style={{display:"flex",gap:6,marginTop:4}}>
