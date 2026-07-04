@@ -3825,17 +3825,6 @@ export default function App(){
   var [userRole,setUserRole] = useState("viewer");
   var [magicSent,setMagicSent] = useState(false);
 
-  /* Safety timeout — if auth check hangs for 8s, clear loading state */
-  useEffect(function(){
-    var t = setTimeout(function(){
-      setAuthLoading(function(prev){
-        if(prev) { console.warn("Auth loading timed out — falling back to login screen"); return false; }
-        return prev;
-      });
-    }, 8000);
-    return function(){ clearTimeout(t); };
-  },[]);
-
   /* ── Project state ── */
   var [allProjs,setAllProjs]=useState([]);
   var [activeProjId,setActiveProjId]=useState(null);
@@ -4140,6 +4129,18 @@ export default function App(){
   var [issues,setIssues]=useState(activeProj?(activeProj.issues||[]):[]);
   var [issErr,setIssErr]=useState("");var [err,setErr]=useState("");
   var [nav,setNav]=useState("projects");var [showAudit,setShowAudit]=useState(false);
+
+
+  /* Safety timeout — if auth check hangs for 8s, clear loading state */
+  useEffect(function(){
+    var t = setTimeout(function(){
+      setAuthLoading(function(prev){
+        if(prev) { console.warn("Auth loading timed out — falling back to login screen"); return false; }
+        return prev;
+      });
+    }, 8000);
+    return function(){ clearTimeout(t); };
+  },[]);
   var envs=activeProj?(activeProj.envs||[]):[];
   var org=activeProj?activeProj.org:"my-org";
   var email=activeProj?activeProj.email:"admin@company.com";
