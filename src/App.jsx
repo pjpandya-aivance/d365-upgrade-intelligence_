@@ -3820,6 +3820,11 @@ export default function App(){
   var [authPass, setAuthPass]  = useState("");
   var [authName, setAuthName]  = useState("");
   var [authLoading,setAuthLoading] = useState(true);
+  var [authErr,setAuthErr] = useState("");
+  var [orgId,  setOrgId]  = useState(null);
+  var [userRole,setUserRole] = useState("viewer");
+  var [magicSent,setMagicSent] = useState(false);
+
   /* Safety timeout — if auth check hangs for 8s, clear loading state */
   useEffect(function(){
     var t = setTimeout(function(){
@@ -3830,12 +3835,6 @@ export default function App(){
     }, 8000);
     return function(){ clearTimeout(t); };
   },[]);
-  var [authErr,setAuthErr] = useState(window._authError||"");
-  /* Clear the global after reading it */
-  if(window._authError) { window._authError = null; }
-  var [orgId,  setOrgId]  = useState(null);
-  var [userRole,setUserRole] = useState("viewer");
-  var [magicSent,setMagicSent] = useState(false);
 
   /* ── Project state ── */
   var [allProjs,setAllProjs]=useState([]);
@@ -3870,9 +3869,9 @@ export default function App(){
               ? "Your magic link has expired. Please request a new one — links are valid for 1 hour."
               : hashError === "access_denied"
                 ? "Sign-in was declined. Please try again."
-                : (hashErrorDesc || hashError).replace(/\+/g," ");
+                : (hashErrorDesc || hashError).split("+").join(" ");
             /* Store error so auth screen can display it after loading clears */
-            window._authError = friendlyMsg;
+            setAuthErr(friendlyMsg);
             setAuthLoading(false);
             return;
           }
