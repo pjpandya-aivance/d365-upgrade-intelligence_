@@ -1,14 +1,20 @@
-
 import { useState, useEffect, useCallback } from "react";
 
 /* ── SUPABASE CLIENT ─────────────────────────────────────────────────────
    Project: D365 OV Intelligence | AutomateIT
-   URL:     https://cdnrujlpccamsyxzvydy.supabase.co
+   URL:     [set via VITE_SUPABASE_URL environment variable]
    Replace SUPABASE_ANON_KEY below with your anon key from:
    Supabase Dashboard → Project Settings → API → anon public key
    ─────────────────────────────────────────────────────────────────────── */
-var SUPABASE_URL = "https://cdnrujlpccamsyxzvydy.supabase.co";
-var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkbnJ1amxwY2NhbXN5eHp2eWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDg0NDgsImV4cCI6MjA5NzEyNDQ0OH0.qt_3YpO_BeVCXHSPAy10BIyLZXSfwm3oAI-bpqICOP0";
+/* Credentials loaded from Vercel environment variables at build time.
+   This keeps sensitive strings OUT of the JS bundle (avoids AV false positives).
+   Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel project settings. */
+var SUPABASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL)
+  ? import.meta.env.VITE_SUPABASE_URL
+  : ""; /* Set VITE_SUPABASE_URL in Vercel env vars */
+var SUPABASE_ANON_KEY = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY)
+  ? import.meta.env.VITE_SUPABASE_ANON_KEY
+  : "";
 
 /* Lightweight Supabase client — no npm required, works in artifacts */
 var _sbHeaders = {
