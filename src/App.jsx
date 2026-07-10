@@ -3843,6 +3843,7 @@ function mkProject(fromVer,org,email){
    ROOT APP — v4.0 COMPLETE (21 nav tabs, all phases unified)
    ═══════════════════════════════════════════════════════════════════ */
 export default function App(){
+console.log("App component mounted");
 
 
   useEffect(() => {
