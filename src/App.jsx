@@ -1,18 +1,3 @@
-useEffect(() => {
-  const url = new URL(window.location.href);
-  const code = url.searchParams.get("code");
-
-  if (code) {
-    supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-      if (error) {
-        console.error("Auth error:", error);
-      } else {
-        window.location.href = "/";
-      }
-    });
-  }
-}, []);
-
 import { useState, useEffect, useCallback } from "react";
 
 /* ── SUPABASE CLIENT ─────────────────────────────────────────────────────
