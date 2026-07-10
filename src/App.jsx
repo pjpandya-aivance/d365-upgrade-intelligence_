@@ -3843,6 +3843,23 @@ function mkProject(fromVer,org,email){
    ROOT APP — v4.0 COMPLETE (21 nav tabs, all phases unified)
    ═══════════════════════════════════════════════════════════════════ */
 export default function App(){
+
+
+  useEffect(() => {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get("code");
+
+  if (code) {
+    supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+      if (error) {
+        console.error("Auth error:", error);
+      } else {
+        window.location.href = "/";
+      }
+    });
+  }
+}, []);
+
   /* ── Auth state ── */
   var [user,   setUser]   = useState(null);
   var [authMode,setAuthMode] = useState("login");   /* login | signup | magic */
