@@ -34,8 +34,7 @@ _buildHeaders(null);
 function sbSetAuth(token) {
   _buildHeaders(token || SUPABASE_ANON_KEY);
 }
-async function sbFrom(table) {
-  return {
+function sbFrom(table) { return {
     _table: table,
     _filters: [],
     _select: "*",
