@@ -3837,15 +3837,7 @@ useEffect(() => {
   const url = new URL(window.location.href);
   const code = url.searchParams.get("code");
 
-  if (code) {
-    supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-      if (error) {
-        console.error("Auth error:", error);
-      } else {
-        loadUserOrg(data.user);   // <-- IMPORTANT
-      }
-    });
-  }
+
 }, []);
 
 
