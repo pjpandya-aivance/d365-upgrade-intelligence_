@@ -3831,7 +3831,7 @@ export default function App(){
 console.log("App component mounted");
 
 
-  useEffect(() => {
+useEffect(() => {
   const url = new URL(window.location.href);
   const code = url.searchParams.get("code");
 
@@ -3840,11 +3840,12 @@ console.log("App component mounted");
       if (error) {
         console.error("Auth error:", error);
       } else {
-        window.location.href = "/";
+        loadUserOrg(data.user);   // <-- IMPORTANT
       }
     });
   }
 }, []);
+
 
   /* ── Auth state ── */
   var [user,   setUser]   = useState(null);
@@ -3940,24 +3941,29 @@ console.log("App component mounted");
       }
     })();
   },[]);
+async function loadUserOrg(u) {
+  try {
+    /* Get profile → org_id → load projects */
+    var pr = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", u.id)
+      .single();
 
-  async function loadUserOrg(u) {
-    try {
-      /* Get profile → org_id → load projects */
-      var pr = await sbFrom("profiles").select("*").eq("id",u.id).single();
-      if(pr.data && pr.data.org_id) {
-        setOrgId(pr.data.org_id);
-        setUserRole(pr.data.role||"viewer");
-        await fetchProjects(pr.data.org_id);
-      } else {
-        /* New user — create org + profile */
-        await setupNewOrg(u);
-      }
-    } catch(e) {
-      console.error("loadUserOrg error:", e);
-      showMsg("Error loading your workspace: "+e.message,"error");
+    if (pr.data && pr.data.org_id) {
+      setOrgId(pr.data.org_id);
+      setUserRole(pr.data.role || "viewer");
+      await fetchProjects(pr.data.org_id);
+    } else {
+      /* New user — create org + profile */
+      await setupNewOrg(u);
     }
+  } catch (e) {
+    console.error("loadUserOrg error:", e);
+    showMsg("Error loading your workspace: " + e.message, "error");
   }
+}
+
 
   async function setupNewOrg(u) {
     try {
