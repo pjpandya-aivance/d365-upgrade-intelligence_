@@ -3964,7 +3964,6 @@ async function loadUserOrg(u) {
   }
 }
 
-
   async function setupNewOrg(u) {
     try {
       var orgName = (u.user_metadata&&u.user_metadata.full_name)
