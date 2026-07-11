@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { sbFrom, sbGetUser, sbSetAuth } from "./supabaseClient";
+
 
 
 /* ── SUPABASE CLIENT ─────────────────────────────────────────────────────
