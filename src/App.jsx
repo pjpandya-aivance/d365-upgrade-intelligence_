@@ -67,7 +67,7 @@ function sbFrom(table) { return {
 }
 async function sbInsert(table, rows, opts) {
   var url = SUPABASE_URL+"/rest/v1/"+table;
-  var headers = Object.assign({}, _sbHeaders, {"Prefer": (opts&&opts.returning)?"return=representation":"return=minimal"});
+  var headers = Object.assign({}, _H, {"Prefer": (opts&&opts.returning)?"return=representation":"return=minimal"});
   try {
     var res = await fetch(url, { method:"POST", headers, body:JSON.stringify(Array.isArray(rows)?rows:[rows]) });
     if(res.status===201||res.status===200) {
@@ -80,7 +80,7 @@ async function sbInsert(table, rows, opts) {
 }
 async function sbUpdate(table, row, filters) {
   var url = SUPABASE_URL+"/rest/v1/"+table+"?"+filters.map(function(f){return f;}).join("&");
-  var headers = Object.assign({}, _sbHeaders, {"Prefer":"return=representation"});
+  var headers = Object.assign({}, _H, {"Prefer":"return=representation"});
   try {
     var res = await fetch(url, { method:"PATCH", headers, body:JSON.stringify(row) });
     var text = await res.text();
@@ -3859,6 +3859,27 @@ export default function App(){
   var _tmr=null;
   function showMsg(msg,type){setNotifMsg(msg);setNotifType(type||"ok");clearTimeout(_tmr);_tmr=setTimeout(function(){setNotifMsg("");},3400);}
 
+
+  /* Sync report/risks/issues from active project when it changes */
+  useEffect(function(){
+    if(activeProj){
+      setReport(activeProj.report||null);
+      setRisks(activeProj.risks||[]);
+      setIssues(activeProj.issues||[]);
+    }
+  },[activeProjId]);
+
+  /* Safety timeout — if auth check hangs for 8s, clear loading state */
+  useEffect(function(){
+    var t = setTimeout(function(){
+      setAuthLoading(function(prev){
+        if(prev){ console.warn("Auth loading timed out"); return false; }
+        return prev;
+      });
+    }, 8000);
+    return function(){ clearTimeout(t); };
+  },[]);
+
   /* ── On mount: check session ── */
   useEffect(function(){
     (async function(){
@@ -4164,14 +4185,6 @@ export default function App(){
 
   /* ── AUTHENTICATED APP ── */
   var activeProj=allProjs.find(function(p){return p.id===activeProjId;})||null;
-  /* Sync report/risks/issues from active project when it changes */
-  useEffect(function(){
-    if(activeProj){
-      setReport(activeProj.report||null);
-      setRisks(activeProj.risks||[]);
-      setIssues(activeProj.issues||[]);
-    }
-  },[activeProjId]);
   var fromVer=activeProj?activeProj.fromVer:"10.0.46";
   var tgtInfo=(function(){var t=VER_KEYS.indexOf(fromVer);if(t<0)return null;var best=null,bIdx=0;for(var h=1;h<=3;h++){var c2=VER_KEYS[t+h];if(c2){best=c2;bIdx=t+h;}}if(!best)return null;var skipped=[];for(var i=t+1;i<bIdx;i++)skipped.push(VER_KEYS[i]);return{ver:best,name:VER_MAP[best]?VER_MAP[best].name:"",skipped};})();
   var toVer=activeProj?activeProj.toVer:(tgtInfo?tgtInfo.ver:"");
