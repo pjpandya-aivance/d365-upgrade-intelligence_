@@ -56,7 +56,8 @@ function sbFrom(table) { return {
       if(this._order) url += "&order="+this._order;
       if(this._limit) url += "&limit="+this._limit;
       try {
-        var res = await fetch(url, { headers: _H });
+        /* Always call _buildHeaders to get fresh headers with current token */
+        var res = await fetch(url, { headers: _buildHeaders(localStorage.getItem("d365_token")) });
         var data = await res.json();
         if(!res.ok) return { data:null, error:data };
         return { data, error:null };
@@ -67,7 +68,7 @@ function sbFrom(table) { return {
 }
 async function sbInsert(table, rows, opts) {
   var url = SUPABASE_URL+"/rest/v1/"+table;
-  var headers = Object.assign({}, _H, {"Prefer": (opts&&opts.returning)?"return=representation":"return=minimal"});
+  var headers = Object.assign({}, _buildHeaders(localStorage.getItem("d365_token")), {"Prefer": (opts&&opts.returning)?"return=representation":"return=minimal"});
   try {
     var res = await fetch(url, { method:"POST", headers, body:JSON.stringify(Array.isArray(rows)?rows:[rows]) });
     if(res.status===201||res.status===200) {
@@ -80,7 +81,7 @@ async function sbInsert(table, rows, opts) {
 }
 async function sbUpdate(table, row, filters) {
   var url = SUPABASE_URL+"/rest/v1/"+table+"?"+filters.map(function(f){return f;}).join("&");
-  var headers = Object.assign({}, _H, {"Prefer":"return=representation"});
+  var headers = Object.assign({}, _buildHeaders(localStorage.getItem("d365_token")), {"Prefer":"return=representation"});
   try {
     var res = await fetch(url, { method:"PATCH", headers, body:JSON.stringify(row) });
     var text = await res.text();
