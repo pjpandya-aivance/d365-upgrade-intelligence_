@@ -4205,17 +4205,6 @@ export default function App(){
   }
   function setEnvs(v){var envs=typeof v==="function"?v(activeProj?activeProj.envs||[]:[]):v;patchProj({envs});}
 
-
-  /* Safety timeout — if auth check hangs for 8s, clear loading state */
-  useEffect(function(){
-    var t = setTimeout(function(){
-      setAuthLoading(function(prev){
-        if(prev) { console.warn("Auth loading timed out — falling back to login screen"); return false; }
-        return prev;
-      });
-    }, 8000);
-    return function(){ clearTimeout(t); };
-  },[]);
   var envs=activeProj?(activeProj.envs||[]):[];
   var org=activeProj?activeProj.org:"my-org";
   var email=activeProj?activeProj.email:"admin@company.com";
