@@ -172,7 +172,7 @@ async function sbGetUser() {
   sbSetAuth(token);
   try {
     var res = await fetch(_authUrl+"/user", { headers:{[_AK]:SUPABASE_ANON_KEY,[_AZ]:_BR+token} });
-    if(!res.ok) { localStorage.removeItem("d365_token"); return null; }
+    if(!res.ok) { localStorage.removeItem("d365_token"); localStorage.removeItem("d365_refresh"); return null; }
     return await res.json();
   } catch(e) { return null; }
 }
@@ -4048,17 +4048,31 @@ export default function App(){
     setAuthLoading(true); setAuthErr("");
     try {
       var r = await sbSignUp(authEmail, authPass, {full_name:authName});
+      /* Supabase returns 200 with identities:[] when email already exists */
+      var alreadyExists = r.user && r.user.identities && r.user.identities.length === 0;
+      if(alreadyExists) {
+        /* Account exists but was created via magic link — try password sign in */
+        var r2 = await sbSignIn(authEmail, authPass);
+        if(r2.access_token && r2.user) {
+          setUser(r2.user);
+          await loadUserOrg(r2.user);
+          return;
+        }
+        /* Password doesn't match — account is passwordless, suggest magic link */
+        setAuthErr("This email is registered. Use 'Magic link' tab to sign in, or try a different password.");
+        setAuthMode("magic");
+        return;
+      }
       var errMsg = r.error ? (typeof r.error==="string"?r.error:(r.error.message||r.error_description||"Sign up failed")) : null;
       if(errMsg) { setAuthErr(errMsg); return; }
       if(r.access_token && r.user) {
         setUser(r.user);
         await loadUserOrg(r.user);
       } else if(r.id && r.email) {
-        /* Supabase returned a user object but no token = email confirmation required */
         showMsg("Account created! Check your email to confirm, then sign in.","ok");
         setAuthMode("login");
       } else {
-        setAuthErr("Unexpected response from server. Please try again.");
+        setAuthErr("Unexpected response. Please try again.");
       }
     } catch(e) {
       setAuthErr("Sign up failed: " + e.message);
@@ -4070,7 +4084,7 @@ export default function App(){
     setAuthLoading(true); setAuthErr("");
     try {
       var r = await sbSignIn(authEmail, authPass);
-      var errMsg = r.error ? (typeof r.error==="string"?r.error:(r.error.message||r.error_description||"Invalid credentials")) : (!r.access_token ? "Invalid credentials" : null);
+      var errMsg = r.error ? (typeof r.error==="string"?r.error:(r.error.message||r.error_description||"Invalid password, or this account uses magic link sign-in. Try the Magic link tab.")) : (!r.access_token ? "Invalid credentials" : null);
       if(errMsg) { setAuthErr(errMsg); return; }
       setUser(r.user);
       await loadUserOrg(r.user);
