@@ -48,7 +48,8 @@ function sbFrom(table) { return {
       this._limit = 1;
       var r = await this._run();
       if(r.error) return r;
-      return { data: r.data&&r.data[0]||null, error: null };
+      if(!r.data || r.data.length === 0) return { data: null, error: null };
+      return { data: r.data[0], error: null };
     },
     _run: async function() {
       var url = SUPABASE_URL+"/rest/v1/"+this._table+"?select="+encodeURIComponent(this._select);
@@ -3973,14 +3974,30 @@ export default function App(){
 
   async function loadUserOrg(u) {
     try {
+      /* Build fresh headers with current token before profile fetch */
+      var tok = localStorage.getItem("d365_token");
+      if(tok) sbSetAuth(tok);
+      
       /* Get profile → org_id → load projects */
       var pr = await sbFrom("profiles").select("*").eq("id",u.id).single();
+      console.log("loadUserOrg profile response:", JSON.stringify(pr));
+      
+      if(pr.error) {
+        console.error("Profile fetch error:", pr.error);
+        /* Don't call setupNewOrg on fetch error — could overwrite existing data */
+        showMsg("Error loading profile: " + (pr.error.message||JSON.stringify(pr.error)), "error");
+        return;
+      }
+      
       if(pr.data && pr.data.org_id) {
         setOrgId(pr.data.org_id);
         setUserRole(pr.data.role||"viewer");
         await fetchProjects(pr.data.org_id);
+      } else if(pr.data && !pr.data.org_id) {
+        /* Profile exists but no org — create one */
+        await setupNewOrg(u);
       } else {
-        /* New user — create org + profile */
+        /* No profile at all — new user */
         await setupNewOrg(u);
       }
     } catch(e) {
@@ -3999,7 +4016,8 @@ export default function App(){
       if(orgRes.error) { showMsg("Failed to create organisation: "+orgRes.error.message,"error"); return; }
       var newOrgId = orgRes.data&&orgRes.data[0]&&orgRes.data[0].id;
       if(!newOrgId) return;
-      await sbUpdate("profiles",{org_id:newOrgId,role:"owner",full_name:u.user_metadata&&u.user_metadata.full_name||""},["id=eq."+u.id]);
+            /* Only update if org_id not already set */
+      await sbUpdate("profiles",{org_id:newOrgId,role:"owner",full_name:(u.user_metadata&&u.user_metadata.full_name)||""},["id=eq."+u.id+encodeURIComponent("&org_id=is.null")]);
       await sbInsert("org_members",{org_id:newOrgId,user_id:u.id,role:"owner"});
       setOrgId(newOrgId);
       setUserRole("owner");
