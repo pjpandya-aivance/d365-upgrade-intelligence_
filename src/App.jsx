@@ -3982,23 +3982,34 @@ export default function App(){
       var pr = await sbFrom("profiles").select("*").eq("id",u.id).single();
       console.log("loadUserOrg profile response:", JSON.stringify(pr));
       
-      if(pr.error) {
-        console.error("Profile fetch error:", pr.error);
-        /* Don't call setupNewOrg on fetch error — could overwrite existing data */
-        showMsg("Error loading profile: " + (pr.error.message||JSON.stringify(pr.error)), "error");
+      if(pr.data && pr.data.org_id) {
+        /* Normal path: profile found with org */
+        setOrgId(pr.data.org_id);
+        setUserRole(pr.data.role||"owner");
+        await fetchProjects(pr.data.org_id);
         return;
       }
+
+      /* Profile fetch failed or missing org — try org_members as fallback */
+      console.warn("Profile fetch issue, trying org_members fallback...");
+      var om = await sbFrom("org_members").select("org_id,role").eq("user_id",u.id).single();
+      console.log("org_members response:", JSON.stringify(om));
       
-      if(pr.data && pr.data.org_id) {
-        setOrgId(pr.data.org_id);
-        setUserRole(pr.data.role||"viewer");
-        await fetchProjects(pr.data.org_id);
-      } else if(pr.data && !pr.data.org_id) {
-        /* Profile exists but no org — create one */
+      if(om.data && om.data.org_id) {
+        setOrgId(om.data.org_id);
+        setUserRole(om.data.role||"owner");
+        /* Also fix profile in background */
+        sbUpdate("profiles",{org_id:om.data.org_id,role:om.data.role},["id=eq."+u.id]);
+        await fetchProjects(om.data.org_id);
+        return;
+      }
+
+      /* No org found at all — new user, create one */
+      if(!pr.error && !om.error) {
         await setupNewOrg(u);
       } else {
-        /* No profile at all — new user */
-        await setupNewOrg(u);
+        console.error("Both profile and org_members failed:", pr.error, om.error);
+        showMsg("Error loading workspace. Please sign out and sign in again.", "error");
       }
     } catch(e) {
       console.error("loadUserOrg error:", e);
