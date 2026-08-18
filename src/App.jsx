@@ -3963,6 +3963,8 @@ export default function App(){
         var u = await sbGetUser();
         if(!u || u.error) { setAuthLoading(false); return; }
         setUser(u);
+        /* Set provisional role — loadUserOrg will update with DB value */
+        setUserRole("owner");
         await loadUserOrg(u);
       } catch(e) {
         console.error("Auth init error:", e);
@@ -4096,6 +4098,7 @@ export default function App(){
       if(errMsg) { setAuthErr(errMsg); return; }
       if(r.access_token && r.user) {
         setUser(r.user);
+        setUserRole("owner");
         await loadUserOrg(r.user);
       } else if(r.id && r.email) {
         showMsg("Account created! Check your email to confirm, then sign in.","ok");
@@ -4116,6 +4119,7 @@ export default function App(){
       var errMsg = r.error ? (typeof r.error==="string"?r.error:(r.error.message||r.error_description||"Invalid password, or this account uses magic link sign-in. Try the Magic link tab.")) : (!r.access_token ? "Invalid credentials" : null);
       if(errMsg) { setAuthErr(errMsg); return; }
       setUser(r.user);
+      setUserRole("owner");
       await loadUserOrg(r.user);
     } catch(e) {
       setAuthErr("Sign in failed: " + e.message);
