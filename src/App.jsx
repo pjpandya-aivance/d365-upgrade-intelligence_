@@ -231,9 +231,10 @@ function dbRowToProj(row) {
     _orgId:               row.org_id,
   });
 }
-function projToDbRow(proj, orgId) {
+function projToDbRow(proj, orgId, userId) {
   return {
     org_id:               orgId,
+    created_by:           userId || proj.createdBy || "00000000-0000-0000-0000-000000000000",
     name:                 proj.org || "my-org",
     from_ver:             proj.fromVer || "10.0.46",
     to_ver:               proj.toVer || null,
@@ -4245,7 +4246,7 @@ export default function App(){
     var proj = allProjs.find(function(p){return p.id===activeProjId;});
     if(!proj||!orgId) return;
     var merged = Object.assign({},proj,updates);
-    var dbRow = projToDbRow(merged,orgId);
+    var dbRow = projToDbRow(merged,orgId,user&&user.id);
     sbUpdate("projects", dbRow, ["id=eq."+activeProjId]).then(function(r){
       if(r.error) showMsg("Save failed: "+r.error.message,"error");
     });
@@ -4410,7 +4411,7 @@ export default function App(){
                 <div><div style={{fontWeight:900,color:"#0f172a",fontSize:"1em"}}>📁 Upgrade Projects</div><div style={{fontSize:"0.68em",color:"#94a3b8",marginTop:2}}>Each project tracks one version migration — all 21 features active per project</div></div>
                 <Btn sm onClick={function(){(async function(){
   if(!orgId){showMsg("Please sign in first","error");return;}
-  var newRow=projToDbRow(mkProject("10.0.44","my-org","admin@company.com"),orgId);
+  var newRow=projToDbRow(mkProject("10.0.44","my-org","admin@company.com"),orgId,user&&user.id);
   var r=await sbInsert("projects",newRow,{returning:true});
   if(r.error){showMsg("Failed to create project: "+r.error.message,"error");return;}
   await dbInsertAudit(orgId,r.data&&r.data[0]&&r.data[0].id,"PROJECT_CREATED",{},user&&user.email);
@@ -4425,7 +4426,7 @@ export default function App(){
                 <div style={{color:"#94a3b8",fontSize:"0.84em",maxWidth:420,margin:"0 auto 18px",lineHeight:1.7}}>Create an upgrade project to unlock all 21 features: ISV tracking, go/no-go workflow, performance baselines, regulatory radar, PQU tracker, knowledge base, multi-entity, partner portal, LCS status, AI reports and more.</div>
                 <Btn onClick={function(){(async function(){
   if(!orgId) return;
-  var r=await sbInsert("projects",projToDbRow(mkProject("10.0.44","my-org","admin@company.com"),orgId),{returning:true});
+  var r=await sbInsert("projects",projToDbRow(mkProject("10.0.44","my-org","admin@company.com"),orgId,user&&user.id),{returning:true});
   if(!r.error){await fetchProjects(orgId);if(r.data&&r.data[0])setActiveProjId(r.data[0].id);}
   setNav("settings");
 })();}}>+ Create First Project</Btn>
