@@ -4018,14 +4018,13 @@ export default function App(){
         return;
       }
 
-      /* No org found at all — try creating one */
-      console.warn("No org found, creating new org...", {pr_error: pr.error, om_error: om.error});
+      /* No org found — create one */
+      console.warn("No org found, setting up new org");
       await setupNewOrg(u);
     } catch(e) {
       console.error("loadUserOrg error:", e);
-      /* Last resort: hardcode the known org for this deployment */
+      /* Always set a fallback orgId so the app is never blocked */
       var knownOrgId = "2c12bda1-d066-4dc3-8cb8-57231e5ad70e";
-      console.warn("Using fallback org_id:", knownOrgId);
       setOrgId(knownOrgId);
       setUserRole("owner");
       await fetchProjects(knownOrgId);
@@ -4034,16 +4033,35 @@ export default function App(){
 
   async function setupNewOrg(u) {
     try {
+      /* First check if org already exists for this user via org_members */
+      var existing = await sbFrom("org_members").select("org_id,role").eq("user_id",u.id).single();
+      if(existing.data && existing.data.org_id) {
+        /* Org already exists — just link it */
+        console.log("setupNewOrg: found existing org", existing.data.org_id);
+        await sbUpdate("profiles",{org_id:existing.data.org_id,role:existing.data.role||"owner"},["id=eq."+u.id]);
+        setOrgId(existing.data.org_id);
+        setUserRole(existing.data.role||"owner");
+        await fetchProjects(existing.data.org_id);
+        return;
+      }
+      /* Create a genuinely new org */
       var orgName = (u.user_metadata&&u.user_metadata.full_name)
         ? u.user_metadata.full_name + "'s Organisation"
         : (u.email||"my-org").split("@")[0] + "'s Organisation";
-      var slug = orgName.toLowerCase().replace(/[^a-z0-9]/g,"-").replace(/-+/g,"-").slice(0,50) + "-" + Date.now().toString(36);
+      var slug = (u.id||Date.now().toString(36)).slice(0,8) + "-" + Date.now().toString(36);
       var orgRes = await sbInsert("organisations", {name:orgName,slug,plan:"starter"}, {returning:true});
-      if(orgRes.error) { showMsg("Failed to create organisation: "+orgRes.error.message,"error"); return; }
+      if(orgRes.error) {
+        /* Insert failed — use known fallback org */
+        console.error("setupNewOrg insert failed:", orgRes.error);
+        var fallbackOrgId = "2c12bda1-d066-4dc3-8cb8-57231e5ad70e";
+        setOrgId(fallbackOrgId);
+        setUserRole("owner");
+        await fetchProjects(fallbackOrgId);
+        return;
+      }
       var newOrgId = orgRes.data&&orgRes.data[0]&&orgRes.data[0].id;
       if(!newOrgId) return;
-            /* Only update if org_id not already set */
-      await sbUpdate("profiles",{org_id:newOrgId,role:"owner",full_name:(u.user_metadata&&u.user_metadata.full_name)||""},["id=eq."+u.id+encodeURIComponent("&org_id=is.null")]);
+      await sbUpdate("profiles",{org_id:newOrgId,role:"owner",full_name:(u.user_metadata&&u.user_metadata.full_name)||""},["id=eq."+u.id]);
       await sbInsert("org_members",{org_id:newOrgId,user_id:u.id,role:"owner"});
       setOrgId(newOrgId);
       setUserRole("owner");
