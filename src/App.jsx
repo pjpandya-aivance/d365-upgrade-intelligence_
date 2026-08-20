@@ -56,7 +56,9 @@ function sbFrom(table) { return {
       if(this._limit) url += "&limit="+this._limit;
       try {
         /* Always call _buildHeaders to get fresh headers with current token */
-        var res = await fetch(url, { headers: _buildHeaders(localStorage.getItem("d365_token")) });
+        var _runTok = localStorage.getItem("d365_token") || SUPABASE_ANON_KEY;
+        url += "&apikey="+encodeURIComponent(SUPABASE_ANON_KEY);
+        var res = await fetch(url, { headers: _buildHeaders(_runTok) });
         var data = await res.json();
         if(!res.ok) return { data:null, error:data };
         return { data, error:null };
@@ -66,8 +68,9 @@ function sbFrom(table) { return {
   };
 }
 async function sbInsert(table, rows, opts) {
-  var url = SUPABASE_URL+"/rest/v1/"+table;
-  var headers = Object.assign({}, _buildHeaders(localStorage.getItem("d365_token")), {"Prefer": (opts&&opts.returning)?"return=representation":"return=minimal"});
+  var _tok = localStorage.getItem("d365_token") || SUPABASE_ANON_KEY;
+  var url = SUPABASE_URL+"/rest/v1/"+table+"?apikey="+encodeURIComponent(SUPABASE_ANON_KEY);
+  var headers = Object.assign({}, _buildHeaders(_tok), {"Prefer": (opts&&opts.returning)?"return=representation":"return=minimal"});
   try {
     var res = await fetch(url, { method:"POST", headers, body:JSON.stringify(Array.isArray(rows)?rows:[rows]) });
     if(res.status===201||res.status===200) {
@@ -79,8 +82,9 @@ async function sbInsert(table, rows, opts) {
   } catch(e) { return { data:null, error:{message:e.message} }; }
 }
 async function sbUpdate(table, row, filters) {
-  var url = SUPABASE_URL+"/rest/v1/"+table+"?"+filters.map(function(f){return f;}).join("&");
-  var headers = Object.assign({}, _buildHeaders(localStorage.getItem("d365_token")), {"Prefer":"return=representation"});
+  var _tok2 = localStorage.getItem("d365_token") || SUPABASE_ANON_KEY;
+  var url = SUPABASE_URL+"/rest/v1/"+table+"?apikey="+encodeURIComponent(SUPABASE_ANON_KEY)+"&"+filters.map(function(f){return f;}).join("&");
+  var headers = Object.assign({}, _buildHeaders(_tok2), {"Prefer":"return=representation"});
   try {
     var res = await fetch(url, { method:"PATCH", headers, body:JSON.stringify(row) });
     var text = await res.text();
@@ -90,9 +94,9 @@ async function sbUpdate(table, row, filters) {
   } catch(e) { return { data:null, error:{message:e.message} }; }
 }
 async function sbDelete(table, filters) {
-  var url = SUPABASE_URL+"/rest/v1/"+table+"?"+filters.map(function(f){return f;}).join("&");
+  var url = SUPABASE_URL+"/rest/v1/"+table+"?apikey="+encodeURIComponent(SUPABASE_ANON_KEY)+"&"+filters.map(function(f){return f;}).join("&");
   try {
-    var res = await fetch(url, { method:"DELETE", headers:_H });
+    var res = await fetch(url, { method:"DELETE", headers:_buildHeaders(localStorage.getItem("d365_token")) });
     if(res.ok) return { error:null };
     var err = await res.json().catch(function(){return{message:"HTTP "+res.status};});
     return { error:err };
